@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" alt="Discord.Net.Scheduler" width="120"/>
+  <img src="assets/logo.png" alt="Discord.Net.Scheduler" width="200"/>
   <h1>Discord.Net.Scheduler</h1>
   <p>Cron jobs, delayed messages, and scheduled tasks for Discord.NET bots.<br/>
   Because scheduling should be easy, not a project in itself.</p>
