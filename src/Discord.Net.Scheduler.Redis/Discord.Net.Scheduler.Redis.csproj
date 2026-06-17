@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <PackageId>Discord.Net.Scheduler.Redis</PackageId>
+    <Title>Discord.Net.Scheduler.Redis</Title>
+    <Authors>Discord.Net.Scheduler Contributors</Authors>
+    <Description>
+      Redis job store for Discord.Net.Scheduler.
+      Provides a persistent job store backed by Redis, enabling
+      job recovery across bot restarts and horizontal scaling.
+    </Description>
+    <IsPackable>true</IsPackable>
+    <PackageOutputPath>../../artifacts</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Redis" Version="2.8.31" />
+    <ProjectReference Include="..\Discord.Net.Scheduler\Discord.Net.Scheduler.csproj" />
+  </ItemGroup>
+
+</Project>

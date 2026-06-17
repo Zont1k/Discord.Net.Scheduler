@@ -1,0 +1,11 @@
+global using Xunit;
+global using FluentAssertions;
+global using NSubstitute;
+global using Microsoft.Extensions.Logging;
+global using Discord;
+global using Discord.WebSocket;
+global using Discord.Net.Scheduler.Scheduling;
+global using Discord.Net.Scheduler.Scheduling.JobStore;
+global using Discord.Net.Scheduler.Builders;
+global using Discord.Net.Scheduler.Jobs;
+global using Discord.Net.Scheduler.Pipeline;

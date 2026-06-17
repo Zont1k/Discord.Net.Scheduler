@@ -1,0 +1,51 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.sln.docstates
+*.userprefs
+*.csproj.user
+*.dbmdl
+packages/
+*.nupkg
+*.snupkg
+
+## JetBrains Rider
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## NuGet
+**/[Pp]ackages/repositories.config
+
+## Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+build/
+[Bb]in/
+[Oo]bj/
+msbuild.log
+msbuild.err
+msbuild.wrn
+*.log
+*.tmp
+
+## Roslyn
+**/[Gg]enerated/
+
+## Benchmark
+BenchmarkDotNet.Artifacts/
+
+## VS
+.vs/
+
+## Build artifacts
+artifacts/
+
+## Temp
+temp/

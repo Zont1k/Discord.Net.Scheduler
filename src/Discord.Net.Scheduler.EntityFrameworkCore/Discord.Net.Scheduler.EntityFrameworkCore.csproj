@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <PackageId>Discord.Net.Scheduler.EntityFrameworkCore</PackageId>
+    <Title>Discord.Net.Scheduler.EntityFrameworkCore</Title>
+    <Authors>Discord.Net.Scheduler Contributors</Authors>
+    <Description>
+      Entity Framework Core job store for Discord.Net.Scheduler.
+      Provides a persistent job store backed by any EF Core-supported
+      database (SQLite, PostgreSQL, SQL Server, etc.).
+    </Description>
+    <IsPackable>true</IsPackable>
+    <PackageOutputPath>../../artifacts</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+    <ProjectReference Include="..\Discord.Net.Scheduler\Discord.Net.Scheduler.csproj" />
+  </ItemGroup>
+
+</Project>
