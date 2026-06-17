@@ -29,10 +29,10 @@ jobs:
         run: dotnet restore
 
       - name: Build
-        run: dotnet build --configuration Release --framework ${{ matrix.tfm }} --no-restore
+        run: dotnet build --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --configuration Release --framework ${{ matrix.tfm }} --no-build
+        run: dotnet test tests/Discord.Net.Scheduler.Tests/Discord.Net.Scheduler.Tests.csproj --configuration Release --framework ${{ matrix.tfm }} --no-build
 
   pack:
     needs: build
