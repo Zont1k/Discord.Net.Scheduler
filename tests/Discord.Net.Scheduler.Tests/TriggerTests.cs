@@ -87,16 +87,10 @@ public sealed class TriggerTests
     [Fact]
     public void RunIf_WithServiceProviderCondition_ShouldStoreCondition()
     {
-        var conditionCalled = false;
-
         var job = new ScheduledJobBuilder()
             .SendMessage(1ul, "test")
             .In(TimeSpan.FromMinutes(1))
-            .RunIf(sp =>
-            {
-                conditionCalled = true;
-                return Task.FromResult(true);
-            })
+            .RunIf(sp => Task.FromResult(true))
             .Build();
 
         job.RunCondition.Should().NotBeNull();
