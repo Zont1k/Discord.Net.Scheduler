@@ -1,7 +1,24 @@
-# Discord.Net.Scheduler
+<div align="center">
+  <img src="assets/logo.png" alt="Discord.Net.Scheduler" width="120"/>
+  <h1>Discord.Net.Scheduler</h1>
+  <p>Cron jobs, delayed messages, and scheduled tasks for Discord.NET bots.<br/>
+  Because scheduling should be easy, not a project in itself.</p>
 
-Cron jobs, delayed messages, and scheduled tasks for Discord.NET bots.
-Because scheduling should be easy, not a project in itself.
+  <p>
+    <a href="https://www.nuget.org/packages/Discord.Net.Scheduler">
+      <img src="https://img.shields.io/nuget/v/Discord.Net.Scheduler?style=flat&logo=nuget&label=NuGet" alt="NuGet"/>
+    </a>
+    <a href="https://www.nuget.org/packages/Discord.Net.Scheduler">
+      <img src="https://img.shields.io/nuget/dt/Discord.Net.Scheduler?style=flat&logo=nuget&label=Downloads" alt="Downloads"/>
+    </a>
+    <a href="https://github.com/Zont1k/Discord.Net.Scheduler/actions/workflows/ci.yml">
+      <img src="https://img.shields.io/github/actions/workflow/status/Zont1k/Discord.Net.Scheduler/ci.yml?style=flat&logo=github&label=Build" alt="Build"/>
+    </a>
+    <a href="LICENSE">
+      <img src="https://img.shields.io/github/license/Zont1k/Discord.Net.Scheduler?style=flat&label=License" alt="License"/>
+    </a>
+  </p>
+</div>
 
 ```sh
 dotnet add package Discord.Net.Scheduler
