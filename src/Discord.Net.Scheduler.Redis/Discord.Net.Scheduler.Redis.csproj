@@ -19,4 +19,8 @@
     <ProjectReference Include="..\Discord.Net.Scheduler\Discord.Net.Scheduler.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>
