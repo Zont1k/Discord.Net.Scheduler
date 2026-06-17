@@ -21,10 +21,8 @@
 
   <ItemGroup>
     <PackageReference Include="Discord.Net.WebSocket" Version="3.20.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.4" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
-    <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.4" />
+    <PackageReference Include="Discord.Net.Interactions" Version="3.20.1" />
+
     <PackageReference Include="OpenTelemetry.Api" Version="1.11.2" />
   </ItemGroup>
 

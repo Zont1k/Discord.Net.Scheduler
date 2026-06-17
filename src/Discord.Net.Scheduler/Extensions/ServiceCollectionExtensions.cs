@@ -1,6 +1,9 @@
+using Discord.Interactions;
+using Discord.Net.Scheduler.Commands;
 using Discord.Net.Scheduler.Pipeline;
 using Discord.Net.Scheduler.Scheduling;
 using Discord.Net.Scheduler.Scheduling.JobStore;
+using Discord.Net.Scheduler.Scheduling.Locking;
 using Discord.Net.Scheduler.Telemetry;
 
 namespace Microsoft.Extensions.DependencyInjection;
@@ -18,6 +21,7 @@ public static class ServiceCollectionExtensions
         }
 
         services.AddSingleton<IJobStore, InMemoryJobStore>();
+        services.AddSingleton<IDistributedLock, InMemoryLock>();
         services.AddSingleton<JobExecutionPipeline>();
         services.AddSingleton<SchedulerMetrics>();
         services.AddSingleton<JobScheduler>();
@@ -37,6 +41,7 @@ public static class ServiceCollectionExtensions
         });
 
         services.AddSingleton<IJobStore, InMemoryJobStore>();
+        services.AddSingleton<IDistributedLock, InMemoryLock>();
         services.AddSingleton<JobExecutionPipeline>();
         services.AddSingleton<SchedulerMetrics>();
         services.AddSingleton<JobScheduler>();
@@ -99,6 +104,35 @@ public static class ServiceCollectionExtensions
             return sp.GetRequiredService<TMiddleware>();
         });
 
+        return services;
+    }
+
+    public static IServiceCollection AddDistributedLock<TLock>(
+        this IServiceCollection services)
+        where TLock : class, IDistributedLock
+    {
+        services.Remove(services.FirstOrDefault(d =>
+            d.ServiceType == typeof(IDistributedLock))!);
+
+        services.AddSingleton<IDistributedLock, TLock>();
+        return services;
+    }
+
+    public static async Task<InteractionService> AddScheduleCommandsAsync(this InteractionService service, IServiceProvider services)
+    {
+        await service.AddModuleAsync<ScheduleCommandModule>(services);
+        return service;
+    }
+
+    public static IServiceCollection AddDistributedLock<TLock>(
+        this IServiceCollection services,
+        Func<IServiceProvider, TLock> factory)
+        where TLock : class, IDistributedLock
+    {
+        services.Remove(services.FirstOrDefault(d =>
+            d.ServiceType == typeof(IDistributedLock))!);
+
+        services.AddSingleton<IDistributedLock>(factory);
         return services;
     }
 

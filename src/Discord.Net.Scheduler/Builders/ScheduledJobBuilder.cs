@@ -114,6 +114,14 @@ public sealed class ScheduledJobBuilder
         return this;
     }
 
+    public ScheduledJobBuilder WithCron(Action<CronExpressionBuilder> configure)
+    {
+        var builder = CronExpressionBuilder.Create();
+        configure(builder);
+        _cronExpression = builder.Build();
+        return this;
+    }
+
     public ScheduledJobBuilder WithTimezone(TimeZoneInfo timezone)
     {
         _timezone = timezone;

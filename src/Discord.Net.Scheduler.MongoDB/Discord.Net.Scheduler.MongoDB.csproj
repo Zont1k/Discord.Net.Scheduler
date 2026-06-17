@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+    <PackageId>Discord.Net.Scheduler.MongoDB</PackageId>
+    <Title>Discord.Net.Scheduler.MongoDB</Title>
+    <Authors>Discord.Net.Scheduler Contributors</Authors>
+    <Description>
+      MongoDB job store for Discord.Net.Scheduler.
+      Provides a persistent job store backed by MongoDB,
+      enabling job recovery across bot restarts and horizontal scaling.
+    </Description>
+    <IsPackable>true</IsPackable>
+    <PackageOutputPath>../../artifacts</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MongoDB.Driver" Version="3.2.1" />
+    <ProjectReference Include="..\Discord.Net.Scheduler\Discord.Net.Scheduler.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

@@ -46,6 +46,14 @@ public sealed class RecurringJobBuilder
         return this;
     }
 
+    public RecurringJobBuilder WithCron(Action<CronExpressionBuilder> configure)
+    {
+        var builder = CronExpressionBuilder.Create();
+        configure(builder);
+        _cronExpression = builder.Build();
+        return this;
+    }
+
     public RecurringJobBuilder WithTimezone(TimeZoneInfo timezone)
     {
         _timezone = timezone;

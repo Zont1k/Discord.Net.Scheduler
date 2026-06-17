@@ -5,6 +5,7 @@ using Discord.Net.Scheduler.Triggers;
 using Discord.WebSocket;
 using Discord.Net.Scheduler.Pipeline;
 using Discord.Net.Scheduler.Scheduling.JobStore;
+using Discord.Net.Scheduler.Scheduling.Locking;
 using Discord.Net.Scheduler.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -17,6 +18,7 @@ public sealed class JobScheduler : BackgroundService
 {
     private readonly DiscordSocketClient _client;
     private readonly IJobStore _store;
+    private readonly IDistributedLock _lock;
     private readonly JobExecutionPipeline _pipeline;
     private readonly SchedulerOptions _options;
     private readonly ILogger<JobScheduler> _logger;
@@ -30,10 +32,12 @@ public sealed class JobScheduler : BackgroundService
         IOptions<SchedulerOptions> options,
         ILogger<JobScheduler> logger,
         IServiceProvider services,
-        SchedulerMetrics? metrics = null)
+        SchedulerMetrics? metrics = null,
+        IDistributedLock? distributedLock = null)
     {
         _client = client;
         _store = store;
+        _lock = distributedLock ?? new InMemoryLock();
         _pipeline = pipeline;
         _options = options.Value;
         _logger = logger;
@@ -167,8 +171,21 @@ public sealed class JobScheduler : BackgroundService
 
             foreach (var job in matching)
             {
-                if (await SatisfiesConditionsAsync(job))
+                if (!await SatisfiesConditionsAsync(job))
+                    continue;
+
+                var lockKey = $"job:{job.Id}";
+                if (!await _lock.TryAcquireAsync(lockKey, TimeSpan.FromMinutes(5), CancellationToken.None))
+                    continue;
+
+                try
+                {
                     await ExecuteJobWithRetryAsync(job, CancellationToken.None);
+                }
+                finally
+                {
+                    await _lock.ReleaseAsync(lockKey, CancellationToken.None);
+                }
             }
         }
         catch (Exception ex)
@@ -192,8 +209,21 @@ public sealed class JobScheduler : BackgroundService
 
             foreach (var job in matching)
             {
-                if (await SatisfiesConditionsAsync(job))
+                if (!await SatisfiesConditionsAsync(job))
+                    continue;
+
+                var lockKey = $"job:{job.Id}";
+                if (!await _lock.TryAcquireAsync(lockKey, TimeSpan.FromMinutes(5), CancellationToken.None))
+                    continue;
+
+                try
+                {
                     await ExecuteJobWithRetryAsync(job, CancellationToken.None);
+                }
+                finally
+                {
+                    await _lock.ReleaseAsync(lockKey, CancellationToken.None);
+                }
             }
         }
         catch (Exception ex)
@@ -278,7 +308,21 @@ public sealed class JobScheduler : BackgroundService
                 if (!await SatisfiesConditionsAsync(job))
                     continue;
 
-                await ExecuteJobWithRetryAsync(job, ct);
+                var lockKey = $"job:{job.Id}";
+                if (!await _lock.TryAcquireAsync(lockKey, TimeSpan.FromMinutes(5), ct))
+                {
+                    _logger.LogDebug("Job {JobId} is locked by another instance, skipping", job.Id);
+                    continue;
+                }
+
+                try
+                {
+                    await ExecuteJobWithRetryAsync(job, ct);
+                }
+                finally
+                {
+                    await _lock.ReleaseAsync(lockKey, ct);
+                }
             }
         }
         catch (OperationCanceledException)
