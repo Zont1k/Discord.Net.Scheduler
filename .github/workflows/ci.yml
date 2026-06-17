@@ -38,6 +38,9 @@ jobs:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +57,4 @@ jobs:
         run: dotnet pack --configuration Release -p:Version=${GITHUB_REF_NAME#v}
 
       - name: Push to NuGet
-        run: |
-          dotnet nuget push artifacts/*.nupkg `
-            --api-key ${{ secrets.NUGET_API_KEY }} `
-            --source https://api.nuget.org/v3/index.json
-        shell: pwsh
+        run: dotnet nuget push artifacts/*.nupkg --source https://api.nuget.org/v3/index.json --api-key az
