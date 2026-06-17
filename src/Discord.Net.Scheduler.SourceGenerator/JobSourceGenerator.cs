@@ -8,11 +8,16 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Discord.Net.Scheduler.SourceGenerator;
 
+/// <summary>
+/// Incremental source generator that discovers <c>[CronJob]</c>-attributed classes
+/// and emits an <c>AddGeneratedCronJobs()</c> extension method for DI registration.
+/// </summary>
 [Generator(LanguageNames.CSharp)]
 public sealed class JobSourceGenerator : IIncrementalGenerator
 {
     private const string CronJobAttributeFullName = "Discord.Net.Scheduler.Attributes.CronJobAttribute";
 
+    /// <inheritdoc />
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
         var cronJobs = context.SyntaxProvider
