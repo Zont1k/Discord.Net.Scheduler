@@ -7,8 +7,6 @@
     <Deterministic>true</Deterministic>
     <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <IncludeSymbols>true</IncludeSymbols>
-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <VersionPrefix>1.0.0</VersionPrefix>
     <PackageProjectUrl>https://github.com/discord-net-scheduler/Discord.Net.Scheduler</PackageProjectUrl>
