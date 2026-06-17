@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using Discord.Net.Scheduler.Builders;
+using Discord.Net.Scheduler.Triggers;
 using Discord.WebSocket;
 using Discord.Net.Scheduler.Pipeline;
 using Discord.Net.Scheduler.Scheduling.JobStore;
@@ -134,6 +136,8 @@ public sealed class JobScheduler : BackgroundService
             await RecoverJobsAsync(stoppingToken);
         }
 
+        RegisterEventTriggers();
+
         var timerInterval = TimeSpan.FromMilliseconds(_options.PollingIntervalMs);
 
         using var timer = new PeriodicTimer(timerInterval);
@@ -142,6 +146,75 @@ public sealed class JobScheduler : BackgroundService
         {
             await ProcessPendingJobsAsync(stoppingToken);
         }
+    }
+
+    private void RegisterEventTriggers()
+    {
+        _client.UserJoined += HandleUserJoinedAsync;
+        _client.MessageReceived += HandleMessageReceivedAsync;
+    }
+
+    private async Task HandleUserJoinedAsync(SocketGuildUser user)
+    {
+        try
+        {
+            var jobs = await _store.GetAllAsync();
+            var matching = jobs
+                .Where(j => j.Status == JobStatus.Pending)
+                .Where(j => j.Triggers.Any(t =>
+                    t is UserJoinedTrigger ujt && ujt.UserId == user.Id))
+                .ToList();
+
+            foreach (var job in matching)
+            {
+                if (await SatisfiesConditionsAsync(job))
+                    await ExecuteJobWithRetryAsync(job, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling UserJoined trigger for user {UserId}", user.Id);
+        }
+    }
+
+    private async Task HandleMessageReceivedAsync(SocketMessage message)
+    {
+        if (message.Author.IsBot)
+            return;
+
+        try
+        {
+            var jobs = await _store.GetAllAsync();
+            var matching = jobs
+                .Where(j => j.Status == JobStatus.Pending)
+                .Where(j => j.Triggers.Any(t => MatchesMessageTrigger(t, message)))
+                .ToList();
+
+            foreach (var job in matching)
+            {
+                if (await SatisfiesConditionsAsync(job))
+                    await ExecuteJobWithRetryAsync(job, CancellationToken.None);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling MessageReceived trigger");
+        }
+    }
+
+    private static bool MatchesMessageTrigger(IJobTrigger trigger, SocketMessage message)
+    {
+        if (trigger is not MessageSentTrigger mst)
+            return false;
+
+        if (mst.ChannelId.HasValue && message.Channel.Id != mst.ChannelId.Value)
+            return false;
+
+        if (mst.Pattern is not null &&
+            !Regex.IsMatch(message.Content, mst.Pattern, RegexOptions.IgnoreCase))
+            return false;
+
+        return true;
     }
 
     private async Task RecoverJobsAsync(CancellationToken ct)
@@ -199,6 +272,12 @@ public sealed class JobScheduler : BackgroundService
                 if (ct.IsCancellationRequested)
                     break;
 
+                if (!await DependenciesMetAsync(job, ct))
+                    continue;
+
+                if (!await SatisfiesConditionsAsync(job))
+                    continue;
+
                 await ExecuteJobWithRetryAsync(job, ct);
             }
         }
@@ -208,6 +287,37 @@ public sealed class JobScheduler : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unexpected error in job processing loop");
+        }
+    }
+
+    private async Task<bool> DependenciesMetAsync(IScheduledJob job, CancellationToken ct)
+    {
+        if (job.Dependencies.Count == 0)
+            return true;
+
+        foreach (var depId in job.Dependencies)
+        {
+            var dep = await _store.GetAsync(depId, ct);
+            if (dep is null || dep.Status != JobStatus.Completed)
+                return false;
+        }
+
+        return true;
+    }
+
+    private async Task<bool> SatisfiesConditionsAsync(IScheduledJob job)
+    {
+        if (job.RunCondition is null)
+            return true;
+
+        try
+        {
+            return await job.RunCondition(_services);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "RunCondition failed for job {JobId}", job.Id);
+            return false;
         }
     }
 
@@ -329,5 +439,38 @@ public sealed class JobScheduler : BackgroundService
         }
 
         _metrics?.JobsCompleted.Add(1);
+
+        await TriggerDependentJobsAsync(job.Id, ct);
+    }
+
+    private async Task TriggerDependentJobsAsync(string completedJobId, CancellationToken ct)
+    {
+        try
+        {
+            var all = await _store.GetAllAsync(ct);
+            var dependents = all
+                .Where(j => j.Dependencies.Contains(completedJobId) && j.Status == JobStatus.Pending)
+                .ToList();
+
+            foreach (var dep in dependents)
+            {
+                if (await DependenciesMetAsync(dep, ct) && await SatisfiesConditionsAsync(dep))
+                {
+                    _logger.LogDebug(
+                        "Triggering dependent job {JobId} after {CompletedJobId}",
+                        dep.Id, completedJobId);
+
+                    if (dep is ScheduledJob scheduled)
+                    {
+                        var updated = scheduled with { NextExecution = DateTimeOffset.UtcNow };
+                        await _store.UpdateAsync(updated, ct);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to trigger dependent jobs for {JobId}", completedJobId);
+        }
     }
 }

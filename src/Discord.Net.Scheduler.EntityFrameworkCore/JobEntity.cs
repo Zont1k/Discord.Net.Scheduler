@@ -44,6 +44,10 @@ public sealed class JobEntity
 
     public string? MetadataJson { get; set; }
 
+    public string? TriggersJson { get; set; }
+
+    public string? DependenciesJson { get; set; }
+
     // SendMessageJob
     public ulong? ChannelId { get; set; }
 

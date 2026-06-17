@@ -1,4 +1,5 @@
 using Discord.Net.Scheduler.Scheduling;
+using Discord.Net.Scheduler.Triggers;
 
 namespace Discord.Net.Scheduler.Builders;
 
@@ -97,6 +98,42 @@ public sealed class RecurringJobBuilder
     public RecurringJobBuilder WithMetadata(string key, string value)
     {
         _inner.WithMetadata(key, value);
+        return this;
+    }
+
+    public RecurringJobBuilder WhenUserJoins(ulong userId)
+    {
+        _inner.WhenUserJoins(userId);
+        return this;
+    }
+
+    public RecurringJobBuilder WhenMessageSent(ulong? channelId = null, string? pattern = null)
+    {
+        _inner.WhenMessageSent(channelId, pattern);
+        return this;
+    }
+
+    public RecurringJobBuilder AfterJob(string jobId)
+    {
+        _inner.AfterJob(jobId);
+        return this;
+    }
+
+    public RecurringJobBuilder After(params string[] jobIds)
+    {
+        _inner.After(jobIds);
+        return this;
+    }
+
+    public RecurringJobBuilder RunIf(Func<IServiceProvider, Task<bool>> condition)
+    {
+        _inner.RunIf(condition);
+        return this;
+    }
+
+    public RecurringJobBuilder RunIf(Func<bool> condition)
+    {
+        _inner.RunIf(condition);
         return this;
     }
 

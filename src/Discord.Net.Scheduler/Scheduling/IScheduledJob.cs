@@ -1,3 +1,5 @@
+using Discord.Net.Scheduler.Triggers;
+
 namespace Discord.Net.Scheduler.Scheduling;
 
 public interface IScheduledJob
@@ -17,5 +19,8 @@ public interface IScheduledJob
     TimeSpan? RetryDelay { get; }
     DateTimeOffset? ExpiresAt { get; }
     IReadOnlyDictionary<string, string> Metadata { get; }
+    IReadOnlyList<IJobTrigger> Triggers { get; }
+    IReadOnlyList<string> Dependencies { get; }
+    Func<IServiceProvider, Task<bool>>? RunCondition { get; }
     Task<JobResult> ExecuteAsync(JobContext context, CancellationToken ct = default);
 }

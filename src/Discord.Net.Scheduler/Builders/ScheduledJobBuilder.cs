@@ -1,5 +1,6 @@
 using Discord.Net.Scheduler.Jobs;
 using Discord.Net.Scheduler.Scheduling;
+using Discord.Net.Scheduler.Triggers;
 
 namespace Discord.Net.Scheduler.Builders;
 
@@ -22,6 +23,11 @@ public sealed class ScheduledJobBuilder
     private DateTimeOffset? _expiresAt;
     private AllowedMentions? _allowedMentions;
     private readonly Dictionary<string, string> _metadata = new(StringComparer.Ordinal);
+    private readonly List<IJobTrigger> _triggers = [];
+    private readonly List<string> _dependencies = [];
+    private Func<IServiceProvider, Task<bool>>? _runCondition;
+
+    private static readonly IReadOnlyList<IJobTrigger> EmptyTriggers = Array.Empty<IJobTrigger>();
 
     public ScheduledJobBuilder WithId(string id)
     {
@@ -141,6 +147,47 @@ public sealed class ScheduledJobBuilder
         return this;
     }
 
+    public ScheduledJobBuilder WhenUserJoins(ulong userId)
+    {
+        _triggers.Add(new UserJoinedTrigger(userId));
+        return this;
+    }
+
+    public ScheduledJobBuilder WhenMessageSent(ulong? channelId = null, string? pattern = null)
+    {
+        _triggers.Add(new MessageSentTrigger(channelId, pattern));
+        return this;
+    }
+
+    public ScheduledJobBuilder AfterJob(string jobId)
+    {
+        _triggers.Add(new JobCompletedTrigger(jobId));
+        _dependencies.Add(jobId);
+        return this;
+    }
+
+    public ScheduledJobBuilder After(params string[] jobIds)
+    {
+        foreach (var id in jobIds)
+        {
+            _triggers.Add(new JobCompletedTrigger(id));
+            _dependencies.Add(id);
+        }
+        return this;
+    }
+
+    public ScheduledJobBuilder RunIf(Func<IServiceProvider, Task<bool>> condition)
+    {
+        _runCondition = condition;
+        return this;
+    }
+
+    public ScheduledJobBuilder RunIf(Func<bool> condition)
+    {
+        _runCondition = _ => Task.FromResult(condition());
+        return this;
+    }
+
     private string ResolveId()
     {
         if (_id is not null)
@@ -169,6 +216,9 @@ public sealed class ScheduledJobBuilder
             nextExecution = DateTimeOffset.UtcNow;
         }
 
+        var triggers = _triggers.Count > 0 ? _triggers.AsReadOnly() : EmptyTriggers;
+        var deps = _dependencies.AsReadOnly();
+
         if (_customAction is not null)
         {
             return new CustomJob(id, _customAction, _name)
@@ -179,7 +229,10 @@ public sealed class ScheduledJobBuilder
                 MaxRetries = _maxRetries,
                 RetryDelay = _retryDelay,
                 ExpiresAt = _expiresAt,
-                Metadata = _metadata
+                Metadata = _metadata,
+                Triggers = triggers,
+                Dependencies = deps,
+                RunCondition = _runCondition
             };
         }
 
@@ -193,7 +246,10 @@ public sealed class ScheduledJobBuilder
                 MaxRetries = _maxRetries,
                 RetryDelay = _retryDelay,
                 ExpiresAt = _expiresAt,
-                Metadata = _metadata
+                Metadata = _metadata,
+                Triggers = triggers,
+                Dependencies = deps,
+                RunCondition = _runCondition
             };
         }
 
@@ -209,7 +265,10 @@ public sealed class ScheduledJobBuilder
                 RetryDelay = _retryDelay,
                 ExpiresAt = _expiresAt,
                 AllowedMentions = _allowedMentions,
-                Metadata = _metadata
+                Metadata = _metadata,
+                Triggers = triggers,
+                Dependencies = deps,
+                RunCondition = _runCondition
             };
         }
 
@@ -225,7 +284,10 @@ public sealed class ScheduledJobBuilder
                 RetryDelay = _retryDelay,
                 ExpiresAt = _expiresAt,
                 AllowedMentions = _allowedMentions,
-                Metadata = _metadata
+                Metadata = _metadata,
+                Triggers = triggers,
+                Dependencies = deps,
+                RunCondition = _runCondition
             };
         }
 

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Discord.Net.Scheduler.Scheduling;
+using Discord.Net.Scheduler.Triggers;
 
 namespace Discord.Net.Scheduler.Jobs;
 
@@ -22,6 +23,8 @@ public sealed record JobWrapper
     public TimeSpan? RetryDelay { get; init; }
     public DateTimeOffset? ExpiresAt { get; init; }
     public Dictionary<string, string> Metadata { get; init; } = [];
+    public List<string>? TriggersJson { get; init; }
+    public List<string> Dependencies { get; init; } = [];
 
     // SendMessageJob fields
     public ulong? ChannelId { get; init; }
@@ -55,6 +58,13 @@ public sealed record JobWrapper
         DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
     };
 
+    private static readonly JsonSerializerOptions TriggerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = false,
+        IncludeFields = true
+    };
+
     public JobWrapper()
     {
     }
@@ -77,6 +87,12 @@ public sealed record JobWrapper
         RetryDelay = job.RetryDelay;
         ExpiresAt = job.ExpiresAt;
         Metadata = job.Metadata.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        Dependencies = job.Dependencies.ToList();
+
+        if (job.Triggers.Count > 0)
+        {
+            TriggersJson = job.Triggers.Select(t => SerializeTrigger(t)).ToList();
+        }
 
         switch (job)
         {
@@ -121,6 +137,8 @@ public sealed record JobWrapper
         }
 
         var metadata = Metadata as IReadOnlyDictionary<string, string>;
+        var triggers = DeserializeTriggers();
+        var deps = Dependencies.AsReadOnly();
 
         return Type switch
         {
@@ -140,7 +158,9 @@ public sealed record JobWrapper
                 RetryDelay = RetryDelay,
                 ExpiresAt = ExpiresAt,
                 Metadata = metadata,
-                IsTTS = IsTTS
+                IsTTS = IsTTS,
+                Triggers = triggers,
+                Dependencies = deps
             },
             nameof(SendEmbedJob) => new SendEmbedJob(Id, EmbedChannelId ?? 0, ReconstructEmbed())
             {
@@ -158,7 +178,9 @@ public sealed record JobWrapper
                 RetryDelay = RetryDelay,
                 ExpiresAt = ExpiresAt,
                 Metadata = metadata,
-                Message = EmbedMessage
+                Message = EmbedMessage,
+                Triggers = triggers,
+                Dependencies = deps
             },
             nameof(EditMessageJob) => new EditMessageJob(Id, EditChannelId ?? 0, EditMessageId ?? 0, EditContent)
             {
@@ -175,7 +197,9 @@ public sealed record JobWrapper
                 MaxRetries = MaxRetries,
                 RetryDelay = RetryDelay,
                 ExpiresAt = ExpiresAt,
-                Metadata = metadata
+                Metadata = metadata,
+                Triggers = triggers,
+                Dependencies = deps
             },
             _ => null
         };
@@ -210,6 +234,68 @@ public sealed record JobWrapper
             builder.WithAuthor(EmbedAuthorName, EmbedAuthorUrl, EmbedAuthorIconUrl);
 
         return builder.Build();
+    }
+
+    private static string SerializeTrigger(IJobTrigger trigger)
+    {
+        return trigger switch
+        {
+            UserJoinedTrigger t => $"{t.Type}:{t.UserId}",
+            MessageSentTrigger t => $"{t.Type}:{t.ChannelId}|{t.Pattern}",
+            JobCompletedTrigger t => $"{t.Type}:{t.DependentJobId}",
+            CronTrigger t => $"{t.Type}:{t.Expression}",
+            DelayTrigger t => $"{t.Type}:{t.Delay:c}",
+            AtTrigger t => $"{t.Type}:{t.UtcTime:O}",
+            _ => throw new NotSupportedException($"Unknown trigger type: {trigger.GetType()}")
+        };
+    }
+
+    private IReadOnlyList<IJobTrigger> DeserializeTriggers()
+    {
+        if (TriggersJson is null || TriggersJson.Count == 0)
+            return [];
+
+        var list = new List<IJobTrigger>(TriggersJson.Count);
+
+        foreach (var s in TriggersJson)
+        {
+            var colonIdx = s.IndexOf(':');
+            if (colonIdx < 0) continue;
+
+            var type = s[..colonIdx];
+            var value = s[(colonIdx + 1)..];
+
+            switch (type)
+            {
+                case nameof(UserJoinedTrigger):
+                    if (ulong.TryParse(value, out var uid))
+                        list.Add(new UserJoinedTrigger(uid));
+                    break;
+                case nameof(MessageSentTrigger):
+                    var parts = value.Split('|', 2);
+                    ulong? cid = parts[0] is { Length: > 0 } c && ulong.TryParse(c, out var cp) ? cp : null;
+                    var pat = parts.Length > 1 && parts[1] is { Length: > 0 } p ? p : null;
+                    list.Add(new MessageSentTrigger(cid, pat));
+                    break;
+                case nameof(JobCompletedTrigger):
+                    list.Add(new JobCompletedTrigger(value));
+                    break;
+                case nameof(CronTrigger):
+                    list.Add(new CronTrigger(value));
+                    break;
+                case nameof(DelayTrigger):
+                    if (TimeSpan.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var d))
+                        list.Add(new DelayTrigger(d));
+                    break;
+                case nameof(AtTrigger):
+                    if (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
+                        list.Add(new AtTrigger(dt));
+                    break;
+            }
+        }
+
+        return list.AsReadOnly();
     }
 
     public string Serialize() => JsonSerializer.Serialize(this, JsonOptions);

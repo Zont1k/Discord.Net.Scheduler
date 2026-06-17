@@ -2,6 +2,7 @@ using System.Text.Json;
 using Discord.Net.Scheduler.Jobs;
 using Discord.Net.Scheduler.Scheduling;
 using Discord.Net.Scheduler.Scheduling.JobStore;
+using Discord.Net.Scheduler.Triggers;
 using Microsoft.EntityFrameworkCore;
 
 namespace Discord.Net.Scheduler.EntityFrameworkCore;
@@ -128,7 +129,13 @@ public sealed class EfJobStore : IJobStore, IAsyncDisposable
             MaxRetries = job.MaxRetries,
             RetryDelayTicks = job.RetryDelay?.Ticks,
             ExpiresAt = job.ExpiresAt,
-            MetadataJson = JsonSerializer.Serialize(job.Metadata, MetadataJsonOptions)
+            MetadataJson = JsonSerializer.Serialize(job.Metadata, MetadataJsonOptions),
+            TriggersJson = job.Triggers.Count > 0
+                ? JsonSerializer.Serialize(job.Triggers.Select(SerializeTrigger), MetadataJsonOptions)
+                : null,
+            DependenciesJson = job.Dependencies.Count > 0
+                ? JsonSerializer.Serialize(job.Dependencies, MetadataJsonOptions)
+                : null
         };
 
         switch (job)
@@ -181,6 +188,8 @@ public sealed class EfJobStore : IJobStore, IAsyncDisposable
                 ?? new Dictionary<string, string>();
 
         IReadOnlyDictionary<string, string> readOnlyMetadata = metadata;
+        var triggers = DeserializeTriggers(entity.TriggersJson);
+        var deps = DeserializeDependencies(entity.DependenciesJson);
 
         return entity.Type switch
         {
@@ -200,7 +209,9 @@ public sealed class EfJobStore : IJobStore, IAsyncDisposable
                 RetryDelay = entity.RetryDelayTicks.HasValue ? TimeSpan.FromTicks(entity.RetryDelayTicks.Value) : null,
                 ExpiresAt = entity.ExpiresAt,
                 Metadata = readOnlyMetadata,
-                IsTTS = entity.IsTTS
+                IsTTS = entity.IsTTS,
+                Triggers = triggers,
+                Dependencies = deps
             },
             nameof(SendEmbedJob) => new SendEmbedJob(entity.Id, entity.EmbedChannelId ?? 0, ReconstructEmbed(entity))
             {
@@ -218,7 +229,9 @@ public sealed class EfJobStore : IJobStore, IAsyncDisposable
                 RetryDelay = entity.RetryDelayTicks.HasValue ? TimeSpan.FromTicks(entity.RetryDelayTicks.Value) : null,
                 ExpiresAt = entity.ExpiresAt,
                 Metadata = readOnlyMetadata,
-                Message = entity.EmbedMessage ?? string.Empty
+                Message = entity.EmbedMessage ?? string.Empty,
+                Triggers = triggers,
+                Dependencies = deps
             },
             nameof(EditMessageJob) => new EditMessageJob(entity.Id, entity.EditChannelId ?? 0, entity.EditMessageId ?? 0)
             {
@@ -236,10 +249,86 @@ public sealed class EfJobStore : IJobStore, IAsyncDisposable
                 RetryDelay = entity.RetryDelayTicks.HasValue ? TimeSpan.FromTicks(entity.RetryDelayTicks.Value) : null,
                 ExpiresAt = entity.ExpiresAt,
                 Metadata = readOnlyMetadata,
-                NewContent = entity.EditContent
+                NewContent = entity.EditContent,
+                Triggers = triggers,
+                Dependencies = deps
             },
             _ => throw new InvalidOperationException($"Unknown job type: {entity.Type}")
         };
+    }
+
+    private static string SerializeTrigger(IJobTrigger trigger)
+    {
+        return trigger switch
+        {
+            UserJoinedTrigger t => $"{t.Type}:{t.UserId}",
+            MessageSentTrigger t => $"{t.Type}:{t.ChannelId}|{t.Pattern}",
+            JobCompletedTrigger t => $"{t.Type}:{t.DependentJobId}",
+            CronTrigger t => $"{t.Type}:{t.Expression}",
+            DelayTrigger t => $"{t.Type}:{t.Delay:c}",
+            AtTrigger t => $"{t.Type}:{t.UtcTime:O}",
+            _ => throw new NotSupportedException($"Unknown trigger type: {trigger.GetType()}")
+        };
+    }
+
+    private static IReadOnlyList<IJobTrigger> DeserializeTriggers(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return [];
+
+        var items = JsonSerializer.Deserialize<List<string>>(json, MetadataJsonOptions);
+        if (items is null || items.Count == 0)
+            return [];
+
+        var list = new List<IJobTrigger>(items.Count);
+        foreach (var s in items)
+        {
+            var colonIdx = s.IndexOf(':');
+            if (colonIdx < 0) continue;
+
+            var type = s[..colonIdx];
+            var value = s[(colonIdx + 1)..];
+
+            switch (type)
+            {
+                case nameof(UserJoinedTrigger):
+                    if (ulong.TryParse(value, out var uid))
+                        list.Add(new UserJoinedTrigger(uid));
+                    break;
+                case nameof(MessageSentTrigger):
+                    var parts = value.Split('|', 2);
+                    ulong? cid = parts[0] is { Length: > 0 } c && ulong.TryParse(c, out var cp) ? cp : null;
+                    var pat = parts.Length > 1 && parts[1] is { Length: > 0 } p ? p : null;
+                    list.Add(new MessageSentTrigger(cid, pat));
+                    break;
+                case nameof(JobCompletedTrigger):
+                    list.Add(new JobCompletedTrigger(value));
+                    break;
+                case nameof(CronTrigger):
+                    list.Add(new CronTrigger(value));
+                    break;
+                case nameof(DelayTrigger):
+                    if (TimeSpan.TryParse(value, System.Globalization.CultureInfo.InvariantCulture, out var d))
+                        list.Add(new DelayTrigger(d));
+                    break;
+                case nameof(AtTrigger):
+                    if (DateTimeOffset.TryParse(value, System.Globalization.CultureInfo.InvariantCulture,
+                            System.Globalization.DateTimeStyles.RoundtripKind, out var dt))
+                        list.Add(new AtTrigger(dt));
+                    break;
+            }
+        }
+
+        return list.AsReadOnly();
+    }
+
+    private static IReadOnlyList<string> DeserializeDependencies(string? json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return Array.Empty<string>();
+
+        var items = JsonSerializer.Deserialize<List<string>>(json, MetadataJsonOptions);
+        return items is not null ? items.AsReadOnly() : Array.Empty<string>();
     }
 
     private static Embed ReconstructEmbed(JobEntity entity)

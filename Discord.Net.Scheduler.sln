@@ -17,6 +17,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Discord.Net.Scheduler.Redis
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Discord.Net.Scheduler.EntityFrameworkCore", "src\Discord.Net.Scheduler.EntityFrameworkCore\Discord.Net.Scheduler.EntityFrameworkCore.csproj", "{A4470B22-AE22-4E3D-9C0F-F736557225CC}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", "{66320409-64EC-F7C5-3DEF-65E7510DAAD1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Discord.Net.Scheduler.Benchmarks", "benchmarks\Discord.Net.Scheduler.Benchmarks\Discord.Net.Scheduler.Benchmarks.csproj", "{161FF5DF-6903-4F3B-A925-AC81C325AD86}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -99,6 +103,18 @@ Global
 		{A4470B22-AE22-4E3D-9C0F-F736557225CC}.Release|x64.Build.0 = Release|Any CPU
 		{A4470B22-AE22-4E3D-9C0F-F736557225CC}.Release|x86.ActiveCfg = Release|Any CPU
 		{A4470B22-AE22-4E3D-9C0F-F736557225CC}.Release|x86.Build.0 = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|x64.Build.0 = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Debug|x86.Build.0 = Debug|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|Any CPU.Build.0 = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|x64.ActiveCfg = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|x64.Build.0 = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|x86.ActiveCfg = Release|Any CPU
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -106,5 +122,6 @@ Global
 	GlobalSection(NestedProjects) = preSolution
 		{E62FB6C0-CE64-49CA-B875-47B5C1DB20B2} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A4470B22-AE22-4E3D-9C0F-F736557225CC} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{161FF5DF-6903-4F3B-A925-AC81C325AD86} = {66320409-64EC-F7C5-3DEF-65E7510DAAD1}
 	EndGlobalSection
 EndGlobal

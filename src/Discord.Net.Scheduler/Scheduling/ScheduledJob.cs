@@ -1,3 +1,5 @@
+using Discord.Net.Scheduler.Triggers;
+
 namespace Discord.Net.Scheduler.Scheduling;
 
 public abstract record ScheduledJob : IScheduledJob
@@ -24,6 +26,9 @@ public abstract record ScheduledJob : IScheduledJob
     public DateTimeOffset? ExpiresAt { get; init; }
     public IReadOnlyDictionary<string, string> Metadata { get; init; }
         = new Dictionary<string, string>();
+    public IReadOnlyList<IJobTrigger> Triggers { get; init; } = [];
+    public IReadOnlyList<string> Dependencies { get; init; } = [];
+    public Func<IServiceProvider, Task<bool>>? RunCondition { get; init; }
 
     public abstract Task<JobResult> ExecuteAsync(JobContext context, CancellationToken ct = default);
 }

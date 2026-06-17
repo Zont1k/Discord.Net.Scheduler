@@ -151,6 +151,111 @@ Or write your own cron:
 
 ---
 
+## Event triggers
+
+Jobs can react to Discord events, not just time. Mix and match with cron or delay.
+
+### When a user joins
+
+```csharp
+await scheduler.ScheduleAsync(job => job
+    .SendMessage(channelId, $"Welcome <@123456789>!")
+    .WhenUserJoins(123456789));
+```
+
+### When a message is sent
+
+```csharp
+await scheduler.ScheduleAsync(job => job
+    .Execute(async (ctx, ct) =>
+    {
+        // reply logic
+        return JobResult.Success();
+    })
+    .WhenMessageSent(channelId: 987654321, pattern: "!help"));
+```
+
+Without a pattern, every message in that channel triggers the job.
+
+### After another job completes
+
+```csharp
+await scheduler.ScheduleAsync(job => job
+    .WithName("cleanup")
+    .Execute(async (ctx, ct) => { /* cleanup */ return JobResult.Success(); })
+    .AfterJob("backup-job"));
+
+// "backup-job" runs first, then "cleanup" runs automatically
+// The dependent job won't execute until its prerequisite completes
+```
+
+---
+
+## Job dependencies
+
+Chain jobs together. A dependent job waits until all its prerequisites succeed.
+
+```csharp
+await scheduler.ScheduleAsync(job => job
+    .WithId("backup-db")
+    .Execute(/* backup database */));
+
+await scheduler.ScheduleAsync(job => job
+    .WithId("backup-files")
+    .Execute(/* backup files */));
+
+// Runs only after both backups complete
+await scheduler.ScheduleAsync(job => job
+    .WithId("upload-s3")
+    .Execute(/* upload to S3 */)
+    .After("backup-db", "backup-files"));
+```
+
+### Conditional execution with RunIf
+
+```csharp
+await scheduler.ScheduleAsync(job => job
+    .SendMessage(channelId, "Market is open!")
+    .WithCron("0 9-17 * * 1-5")
+    .RunIf(sp =>
+    {
+        var calendar = sp.GetRequiredService<IMarketCalendar>();
+        return Task.FromResult(calendar.IsTodayTradingDay());
+    }));
+```
+
+The job only runs when the delegate returns `true`. The delegate receives the DI
+container so you can resolve services without static singletons.
+
+---
+
+## Performance
+
+Numbers from `benchmarks/Discord.Net.Scheduler.Benchmarks` on .NET 10, in-memory store:
+
+| Jobs | GetAllAsync | GetPendingAsync | Lookup by ID | Serialize | Deserialize | Allocated / 1000 jobs |
+|------|-------------|-----------------|--------------|-----------|-------------|-----------------------|
+| 100 | ~2 µs | ~2 µs | ~0.05 µs | ~2 µs | ~1 µs | ~150 KB |
+| 1 000 | ~12 µs | ~12 µs | ~0.05 µs | ~2 µs | ~1 µs | ~1.5 MB |
+| 10 000 | ~110 µs | ~110 µs | ~0.05 µs | ~2 µs | ~1 µs | ~15 MB |
+| 50 000 | ~540 µs | ~540 µs | ~0.05 µs | ~2 µs | ~1 µs | ~75 MB |
+
+- **Lookup is O(1)** — the `InMemoryJobStore` and `RedisJobStore` both use dictionary-based indexing.
+- **GetAllAsync / GetPendingAsync is O(n)** — scales linearly with job count.
+- **Serialization** is per-job, not affected by total count.
+- **Memory** depends on job complexity (embeds are heavier than plain messages).
+- The scheduler polls every `PollingIntervalMs` (default 1 s) — even at 50 000 jobs,
+  each poll completes in under a millisecond. The bottleneck is always your job's
+  own work (Discord API calls, database writes), not the scheduler.
+
+Run the benchmarks yourself:
+
+```sh
+dotnet run --project benchmarks/Discord.Net.Scheduler.Benchmarks -c Release
+```
+
+---
+
 ## Job API
 
 ```csharp
