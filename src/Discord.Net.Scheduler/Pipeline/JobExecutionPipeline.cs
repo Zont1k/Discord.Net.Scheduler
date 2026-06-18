@@ -7,7 +7,7 @@ public sealed class JobExecutionPipeline
     private readonly List<Func<JobMiddlewareDelegate, JobMiddlewareDelegate>> _middleware = [];
     private JobMiddlewareDelegate? _core;
 
-    internal JobExecutionPipeline()
+    public JobExecutionPipeline()
     {
     }
 
